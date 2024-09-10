@@ -9,6 +9,12 @@ func (s *ScrapeJobSpec) Unpack() (string, error) {
 	return s.url, s.err
 }
 
+type ScraperConfig struct {
+	Parallelism int
+	Selector    string
+	TopK        int
+}
+
 type ScrapeJobLoaderConfig struct {
 	// cut off the number of pages to scrape, similar to head in unix. useful for testing and avoiding getting blocked
 	PageCutoff int
