@@ -2,6 +2,7 @@ package scraper
 
 import (
 	"bufio"
+	"context"
 	"io"
 	"net/http"
 
@@ -9,17 +10,21 @@ import (
 	"github.com/yanilov/wc-scraper/internal/wordfilter"
 )
 
-func LoadBankFromUrl(url string, filter wordfilter.WordFilter) (<-chan bank.WordBank, error) {
-	resp, err := http.Get(url)
+func LoadBankFromUrl(ctx context.Context, url string, filter wordfilter.WordFilter) (<-chan bank.WordBank, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 
-	result := loadBankFromReaderCloser(resp.Body, filter)
+	result := loadBankFromReaderCloser(ctx, resp.Body, filter)
 	return result, nil
 }
 
-func loadBankFromReaderCloser(reader io.ReadCloser, filter wordfilter.WordFilter) <-chan bank.WordBank {
+func loadBankFromReaderCloser(ctx context.Context, reader io.ReadCloser, filter wordfilter.WordFilter) <-chan bank.WordBank {
 
 	scanner := bufio.NewScanner(reader)
 	scanner.Split(bufio.ScanWords)
@@ -32,11 +37,16 @@ func loadBankFromReaderCloser(reader io.ReadCloser, filter wordfilter.WordFilter
 
 		bank := bank.New()
 		for scanner.Scan() {
-			word := scanner.Text()
-			if filter(word) {
-				bank.Add(word)
+			//non-blocking select, cancelling if the context is done
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				word := scanner.Text()
+				if filter(word) {
+					bank.Add(word)
+				}
 			}
-		}
 		}
 		result <- bank
 	}()
