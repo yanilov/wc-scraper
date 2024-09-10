@@ -10,12 +10,13 @@ var _ WordBank = (*wordBankImpl)(nil)
 
 // Add implements WordBank.
 func (w *wordBankImpl) Add(word string) {
-	panic("unimplemented")
+	w.data[word] = struct{}{}
 }
 
 // Contains implements WordBank.
 func (w *wordBankImpl) Contains(word string) bool {
-	panic("unimplemented")
+	_, ok := w.data[word]
+	return ok
 }
 
 func New() WordBank {
@@ -29,13 +30,7 @@ func NewFromSlice(words []string) WordBank {
 	for _, word := range words {
 		data[word] = struct{}{}
 	}
-	return NewFromMap(data)
-}
-
-func NewFromMap(words map[string]struct{}) WordBank {
-	return &wordBankImpl{
-		data: words,
-	}
+	return NewFromKeys(data)
 }
 
 func NewFromKeys[V any](words map[string]V) WordBank {

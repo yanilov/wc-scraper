@@ -29,7 +29,7 @@ func Test_Wordbank_FromSlice(t *testing.T) {
 	}
 }
 
-func Test_Wordbank_FromMap(t *testing.T) {
+func Test_Wordbank_From(t *testing.T) {
 	words := []string{"hello", "world", "foo", "bar"}
 
 	bank := NewFromSlice(words)
