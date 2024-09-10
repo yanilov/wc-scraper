@@ -1,6 +1,10 @@
 package wordfilter
 
-import "unicode"
+import (
+	"unicode"
+
+	"github.com/yanilov/wc-scraper/internal/bank"
+)
 
 func NewMinLengthFilter(minLen int) WordFilter {
 	return func(word string) bool {
@@ -19,10 +23,9 @@ func NewAlphaOnlyFilter() WordFilter {
 	}
 }
 
-func NewWordBankFilter(dict map[string]struct{}) WordFilter {
+func NewWordBankFilter(bank bank.WordBank) WordFilter {
 	return func(word string) bool {
-		_, ok := dict[word]
-		return ok
+		return bank.Contains(word)
 	}
 }
 

@@ -1,13 +1,18 @@
 package wordfilter
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/yanilov/wc-scraper/internal/bank"
+)
 
 func Test_BankFilter(t *testing.T) {
 	dict := map[string]struct{}{
 		"hello": {},
 		"world": {},
 	}
-	valid := NewWordBankFilter(dict)
+	bank := bank.NewFromKeys(dict)
+	valid := NewWordBankFilter(bank)
 	if !valid("hello") {
 		t.Errorf("expected 'hello' to pass filter")
 	}
@@ -47,11 +52,13 @@ func Test_AlphaOnlyFilter(t *testing.T) {
 
 func Test_AggregateFilter(t *testing.T) {
 
-	bank := map[string]struct{}{
+	dict := map[string]struct{}{
 		"foo": {},
 		"fo":  {},
 		"bar": {},
 	}
+	bank := bank.NewFromKeys(dict)
+
 	valid := NewAggregateFilter(
 		NewMinLengthFilter(3),
 		NewAlphaOnlyFilter(),
