@@ -37,6 +37,8 @@ func loadBankFromReaderCloser(reader io.ReadCloser, filter wordfilter.WordFilter
 				bank.Add(word)
 			}
 		}
+		}
+		result <- bank
 	}()
 
 	return result
