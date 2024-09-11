@@ -11,6 +11,7 @@ go run cmd/scraper/main.go
 
 ## Future improvements
 
+* Supprort multi-node architecture for large-scale scraping
 * Bloom filter to support larger dictionaries
 * Benchmarks
 * CLI, file-based configuration instead of hardcoded
