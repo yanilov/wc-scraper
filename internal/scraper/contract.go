@@ -12,7 +12,6 @@ func (s *ScrapeJobSpec) Unpack() (string, error) {
 type ScraperConfig struct {
 	Parallelism int
 	Selector    string
-	TopK        int
 }
 
 type ScrapeJobLoaderConfig struct {

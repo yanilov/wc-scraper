@@ -8,20 +8,25 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/yanilov/wc-scraper/internal/analytics"
 	"github.com/yanilov/wc-scraper/internal/bank"
 	"github.com/yanilov/wc-scraper/internal/scraper"
 	"github.com/yanilov/wc-scraper/internal/wordfilter"
 )
 
 const (
-	bankUrl             = "https://raw.githubusercontent.com/dwyl/english-words/master/words.txt"
-	jobsUrl             = "https://drive.usercontent.google.com/u/0/uc?id=1TF4RPuj8iFwpa-lyhxG67V8NDlktmTGi&export=download"
+	bankUrl = "https://raw.githubusercontent.com/dwyl/english-words/master/words.txt"
+	jobsUrl = "https://drive.usercontent.google.com/u/0/uc?id=1TF4RPuj8iFwpa-lyhxG67V8NDlktmTGi&export=download"
+
+	// safety parameter to avoid loading too many pages and getting blocked.
+	// set it to 0 to load all pages
+	loadJobPageCutoff   = 3
 	loadJobBackpressure = 10
-	scrapeParallelism   = 6
-	scrapeSelector      = "article p, article h1, article h2, article h3, article h4, article h5, article h6"
-	topK                = 10
-	// safety parameter to avoid loading too many pages and getting blocked
-	pageCutoff = 3
+
+	scrapeParallelism = 6
+	scrapeSelector    = "article p, article h1, article h2, article h3, article h4, article h5, article h6"
+
+	topK = 10
 )
 
 func main() {
@@ -39,7 +44,7 @@ func main() {
 	}
 	jobStream, err := scraper.LoadJobsFromUrls(ctx, jobsUrl, scraper.ScrapeJobLoaderConfig{
 		Backpressure: loadJobBackpressure,
-		PageCutoff:   pageCutoff,
+		PageCutoff:   loadJobPageCutoff,
 	})
 	if err != nil {
 		panic(err)
@@ -59,11 +64,10 @@ func main() {
 	scrapeConfig := scraper.ScraperConfig{
 		Parallelism: scrapeParallelism,
 		Selector:    scrapeSelector,
-		TopK:        topK,
 	}
 	scraper := scraper.NewScraper(ctx, scrapeConfig, scraperWordfilter)
 
-	erroredLoadJobs := make(map[string]error)
+	report := NewErrorReport()
 mainloop:
 	for {
 		select {
@@ -75,7 +79,7 @@ mainloop:
 			url, err := job.Unpack()
 			// append to report if there was an error loading the job
 			if err != nil {
-				erroredLoadJobs[url] = err
+				report.LoadUrlsErrors = append(report.LoadUrlsErrors, err)
 				continue
 			}
 			scraper.Visit(url)
@@ -87,18 +91,19 @@ mainloop:
 
 	// wait for all scraping to finish
 	scraper.Wait()
-	wcTopK := scraper.TopK()
+
+	// print the top K words
+	wc := scraper.WordCount()
+	wcTopK := analytics.TopK(wc, topK)
 	bytes, err := json.MarshalIndent(wcTopK, "", "  ")
 	if err != nil {
 		panic(err)
 	}
 	fmt.Fprintln(os.Stdout, string(bytes))
 
-	// if there were errored  load jobs, print them to stderr
-	if len(erroredLoadJobs) > 0 {
-		fmt.Fprintln(os.Stderr, "errored jobs:")
-
-		bytes, err := json.MarshalIndent(erroredLoadJobs, "", "  ")
+	// print to stderr on any errors
+	if !report.IsEmpty() {
+		bytes, err := json.MarshalIndent(report.Error(), "", "  ")
 		if err != nil {
 			panic(err)
 		}
@@ -128,4 +133,28 @@ func buildSignalContext() context.Context {
 		}
 	}()
 	return ctx
+}
+
+type errorReport struct {
+	LoadUrlsErrors  []error
+	UrlScrapeErrors map[string]error
+}
+
+// assert that ErrorReport implements error
+var _ error = (*errorReport)(nil)
+
+// Error implements error.
+func (e *errorReport) Error() string {
+	return fmt.Sprintf("errored load jobs: %v, errored url scrapes: %v", e.LoadUrlsErrors, e.UrlScrapeErrors)
+}
+
+func (e *errorReport) IsEmpty() bool {
+	return len(e.LoadUrlsErrors) == 0 && len(e.UrlScrapeErrors) == 0
+}
+
+func NewErrorReport() *errorReport {
+	return &errorReport{
+		LoadUrlsErrors:  make([]error, 0),
+		UrlScrapeErrors: make(map[string]error),
+	}
 }
