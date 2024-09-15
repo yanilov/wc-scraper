@@ -10,13 +10,13 @@ func (s *ScrapeJobSpec) Unpack() (string, error) {
 }
 
 type ScraperConfig struct {
-	Parallelism int
-	Selector    string
+	Parallelism int    `yaml:"parallelism"`
+	Selector    string `yaml:"selector"`
 }
 
 type ScrapeJobLoaderConfig struct {
 	// cut off the number of pages to scrape, similar to head in unix. useful for testing and avoiding getting blocked
-	PageCutoff int
+	PageCutoff int `yaml:"page_cutoff,omitempty"`
 	// the number of jobs to buffer in the output channel, to avoid pressuring the scraper
-	Backpressure int
+	Backpressure int `yaml:"backpressure"`
 }
