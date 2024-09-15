@@ -27,5 +27,14 @@ func TopK[T comparable](dict map[T]int, top int) map[T]int {
 		result[kvSlice[i].Key] = kvSlice[i].Value
 	}
 
+	for i := top; i < len(kvSlice); i++ {
+		// if there are more words with the same count as the kth word, include them
+		if kvSlice[i].Value == kvSlice[top-1].Value {
+			result[kvSlice[i].Key] = kvSlice[i].Value
+		} else {
+			break
+		}
+	}
+
 	return result
 }
